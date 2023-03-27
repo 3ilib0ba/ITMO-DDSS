@@ -23,6 +23,9 @@ $$
         constraint_name text;
         constraint_def  text;
         first_constraint boolean;
+        att_current_num integer := 1;
+        array_atts int2[];
+        number_of_att int2;
     begin
         tmp_user_name := current_setting('myvars.user_name');
         tmp_database_name := current_database();
@@ -40,10 +43,10 @@ $$
 
         if table_exists > 0 then
 
-            raise notice '|Пользователь: %', tmp_user_name;
-            raise notice '|Таблица: %', tmp_table_name;
-            raise notice '|No  Имя столбца    Атрибуты';
-            raise notice '|--- -------------- ------------------------------------------';
+            raise notice 'Пользователь: %', tmp_user_name;
+            raise notice 'Таблица: %', tmp_table_name;
+            raise notice 'No  Имя столбца    Атрибуты';
+            raise notice '--- -------------- ------------------------------------------';
             select "oid" into table_id from pg_catalog.pg_class where "relname" = tmp_table_name;
             for column_record in select * from pg_catalog.pg_attribute where attrelid = table_id
                 loop
@@ -60,7 +63,7 @@ $$
 
                     select format('%-3s %-14s %-6s %-2s %s', column_number, my_column_name, 'Type', ':', column_type)
                     into result;
-                    raise notice '%', '|' || result;
+                    raise notice '%', result;
 
                     for constraint_name, constraint_def in select conname, pg_get_constraintdef(c.oid)
                                                            from pg_constraint c
@@ -68,17 +71,27 @@ $$
                                                                     join pg_attribute a on a.attrelid = t.oid
                                                            where t.relname = tmp_table_name
                                                              and a.attname = my_column_name
+                                                             and column_number::smallint = ANY (c.conkey)
                         loop
-                            if first_constraint then
-                                select format('%25s %-2s %s %s', 'Constr', ':', constraint_name, constraint_def) into result;
-                                raise notice '%', '|' || result;
-                                first_constraint := false;
-                            else
-                                select format('%49s %s',  constraint_name, constraint_def) into result;
-                                raise notice '%', '|' || result;
-                            end if;
+--                             for number_of_att in array_atts
+--                                 loop
+--                                     if number_of_att::integer = column_number then
+                                        if first_constraint then
+                                            select format('%25s %-2s %s %s', 'Constr', ':', constraint_name, constraint_def) into result;
+                                                raise notice '%', result;
+                                            first_constraint := false;
+                                        else
+                                            select format('%49s %s',  constraint_name, constraint_def) into result;
+                                            raise notice '%', result;
+                                        end if;
+--                                     end if;
+--                                 end loop;
                         end loop;
                 end if;
+                if first_constraint = false then
+                    raise notice ' ';
+                end if;
+                att_current_num := att_current_num + 1;
             end loop;
         else
             raise notice 'Пользователь: %', tmp_user_name;
@@ -86,3 +99,5 @@ $$
         end if;
     end
 $$ LANGUAGE plpgsql;
+
+
