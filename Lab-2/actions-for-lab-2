@@ -1,0 +1,53 @@
+Connecting to current node:
+    ssh s311715@se.ifmo.ru -p 2222  (password from my helios)
+    ssh postgres1@pg160             (password from description my version of the lab)
+
+Set up environments(input once at first connect):
+    export PGDATA=$HOME/u08/dir8
+    export PGHOST=pg160
+    export PGUSERNAME=postgres1
+    export PGENCODE=WIN1251
+    export PGLOCALE=ru_RU.ANSI1251
+
+init db and configure it:
+    initdb --locale=$PGLOCALE --encoding=$PGENCODE --username=$PGUSERNAME --pgdata=$PGDATA
+
+!!! PG_HBA.conf:
+reject other methods
+add my method to connect: host all all all MD5(type, database, user, address, method)
+
+!!! POSTGRESQL.conf:
+port = 9120
+max_connections = 5
+password_encryption = md5
+shared_buffers = 2GB
+temp_buffers = 128MB
+work_mem = 64MB
+checkpoint_timeout = 10min
+effective_cache_size = 4GB
+fsync = on
+commit_delay = 0
+
+archive_mode = on
+archive_command = 'cp %p $HOME/u08/dir9'
+
+log_destination = 'stderr'
+logging_collector = on
+log_min_messages = warning
+log_checkpoints = on
+
+РАБОТА с БД:
+создаем БД — createdb -p 9120 -T template0 whitebunny10
+mkdir -p $HOME/u10/dir1
+psql -p 9120 -d whtebunny10
+create tablespace indexspace location '/var/db/postgres1/u10/dir1';
+
+create role s311715 login password '1234';
+
+mkdir -p $HOME/u11/tables
+create tablespace tablespace1 location '/var/db/postgres1/u11/tables';
+create table football (id bigserial primary key, name text );
+create index on football (name) tablespace indexspace;
+
+grant insert on football to s311715;
+
